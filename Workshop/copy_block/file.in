@@ -1,0 +1,505 @@
+hello WorldvASlkdnm:?OvnkdsKSLJDvn>KJSD v>JKSD vKJDSv nSD>vSDvSDkv ;SDvj SDvs dv :SDV SJDLv
+<SDmnv kJ vDvDCv
+vSDvSDkvZDSVZDXV
+ZSvdZSDV
+Svb
+xcfbvZFDXbZDFBDF
+BDFBDFBS
+DFDSFSDV
+vSDvSDkvZDSVZDXVVDS
+FVSDV
+vSDvSDkvZDSVZDXVVDSDV
+SDVDSFV
+SDVDSFVSDF
+vDFsv
+ZSvdZSDVsdfvSFD
+vDFsvSDv
+SDmnvvS
+dvSDFv
+dvSDFvWorking with Files
+Linux System Programming
+Chapter 3: Working with Files
+NAHPI - COME3204
+©2023
+1Working with Files
+Linux System Programming
+Introduction
+In our previous chapter, we looked at the fundamentals of Linux system programming and shell
+programming. Now we change gears in the course, we look at Linux files and directories and how
+to manipulate them. You will learn how to create files, open them, read, write, and close them.
+You also learn how programs can manipulate directories (to create, scan, and delete them, for
+example). With the preliminaries behind us, we now take a step deeper into system programming
+as you now start programming in C. Let's go!
+Before proceeding to the way Linux handles file I/O, we review the concepts associated with files,
+directories, and devices. To manipulate files and directories, you need to make system calls, but
+there also exists a whole range of library functions, the standard I/O library (stdio), to make file
+handling more efficient.
+We spend the majority of the chapter detailing the various calls to handle files and directories. So
+this chapter covers various file-related topics:
+❑ Files and devices
+❑ System calls
+❑ Library functions
+❑ Low-level file access
+❑ Managing files
+❑ The standard I/O library
+❑ Formatted input and output
+3.1 Linux File Structure
+We take a brief tour on Linux file structure, since everything on UNIX/LINUX is a file.
+This means that, in general, programs can use disk files, serial ports, printers, and other devices in
+exactly the same way they would use a file. We cover mainly the five basic functions: open, close,
+read, write, and ioctl.
+Directories, are special sorts of files. In modern UNIX versions, including Linux, even the
+superuser may not write to them directly. All users ordinarily use the high-level opendir/readdir
+interface to read directories without needing to know the system-specific details of directory
+implementation. We’ll return to special directory functions later in this chapter.
+NAHPI - COME3204
+©2023
+2Working with Files
+Linux System Programming
+Files
+1.
+In UNIX system or UNIX-like system, all input and output are done by reading or writing
+files, because all peripheral devices, even keyboard and screen are files in the file system.
+2.
+This means that a single homogeneous interface handles all communication between a
+program and peripheral devices. In generaI, programs can use disk files, serial ports, printers
+and other devices in exactly the same way as they would.
+3.
+UNIX provides a simple and consistent interface to operating system services and to
+devices.
+Directories
+The Linux directory structure is like a tree. The base of the Linux file system hierarchy begins at
+the root. Directories branch off the root, but everything starts at root.
+A directory is a file that contains a list of file names and some indication of where they are
+located.
+The location is an index into another table called the "inode list".
+The inode for a file is where all the information of a file is kept on the disk, e.g. file's
+creation/modification time, permission, length, etc. except the file's name.
+A directory entry generally consists of only two items, the file name and an inode number.
+NAHPI - COME3204
+©2023
+3Working with Files
+Linux System Programming
+Linux allocate an index node (inode) for every file and directory in the filesystem. An inode is
+like a database of a file (ie it contains many information about the file in question). Inodes do not
+store actual data, instead, they store the metadata where you can find the storage blocks of each
+file’s data. They do not contain the file content and the file name.
+A directory is a file that holds the inode numbers and names of other files. Each directory entry is
+a link to a file’s inode; remove the filename and you remove the link.
+The following metadata exists in an inode:
+•
+•
+•
+•
+•
+•
+Inode number
+File size
+File type
+Permissions
+Owner ID
+Group ID
+NAHPI - COME3204
+©2023
+4Working with Files
+•
+•
+•
+•
+•
+Linux System Programming
+Permissions
+Time last accessed
+Time last modified
+Number of Soft/Hard Links
+Etc
+There are different ways to check the inode number, but stat or ls-l… command displays the file
+statistics, including the unique inode number. There are two types of links:
+A. SOFT LINKS
+Aka Symbolic link as they are called are like shortcut on window. It is a pointer to the
+original file which has a different inode number from the original file. If you delete the original
+file then the soft link(s) become useless!
+B. HARD LINKS
+It is a different name of the same file, with the same inode number and same file size. If by
+some chance you delete the original file, the hard links will still contain the data that were in the
+original file. More so, if you edit hardlink1 then hardlink2 gets update as well. So it is more like a
+copy of the file, but they both point to the same spot on the HDD were the file data is stored.
+NAHPI - COME3204
+©2023
+5Working with Files
+Linux System Programming
+C. How to create HARD & SOFT LINKS Via command
+Hard link: ln sourceFile hardlinkFile
+Eg. ln file1.txt hardlink.txt, use ls -l to see both files now.
+Soft link: ln -s sourceFile softlinkFile
+Eg. ln -s file1.txt hardlink.txt, use ls -l to see both files now.
+1. / (Root): Primary hierarchy root and root directory of the entire file system hierarchy.
+•
+•
+Every single file and directory starts from the root directory
+The only root user has the right to write under this directory
+NAHPI - COME3204
+©2023
+6Working with Files
+•
+Linux System Programming
+/root is the root user’s home directory, which is not the same as /
+2. /bin : Essential command binaries that need to be available in single-user mode; for all users,
+e.g., cat, ls, cp.
+•
+•
+•
+Contains binary executables
+Common linux commands you need to use in single-user modes are located under this
+directory.
+Commands used by all the users of the system are located here e.g. ps, ls, ping, grep, cp
+•
+3. /boot : Boot loader files, e.g., kernels, initrd.
+•
+Kernel initrd, vmlinux, grub files are located under /boot
+NAHPI - COME3204
+©2023
+7Working with Files
+Linux System Programming
+4. /dev : Essential device files, e.g., /dev/null.
+•
+These include terminal devices, usb, or any device attached to the system.
+•
+5. /etc : Host-specific system-wide configuration files.
+•
+•
+•
+Contains configuration files required by all programs.
+This also contains startup and shutdown shell scripts used to start/stop individual
+programs.
+Example: /etc/resolv.conf, /etc/logrotate.conf.
+NAHPI - COME3204
+©2023
+8Working with Files
+Linux System Programming
+•
+6. /home: Users’ home directories, containing saved files, personal settings, etc.
+•
+•
+Home directories for all users to store their personal files.
+example: /home/kishlay, /home/kv
+7. /lib : Libraries essential for the binaries in /bin/ and /sbin/.
+•
+•
+Library filenames are either ld* or lib*.so.*
+Example: ld-2.11.1.so, libncurses.so.5.7
+NAHPI - COME3204
+©2023
+9Working with Files
+Linux System Programming
+•
+3.2 System Calls and Device Drivers
+You can access and control files and devices using a small number of functions. These functions,
+known as system calls, are provided by UNIX (and Linux) directly, and are the interface to the
+operating system itself.
+At the heart of the operating system, the kernel, an a number of device drivers. These are a
+collection of low-level interfaces for controlling system hardware. For example, there will be a
+device driver for a tape drive, which knows how to start the tape, wind it forward and backward,
+read and write to it, and so on. It is worth also to note that tapes have to be written to in blocks of
+a certain size. Because tapes are sequential in nature, the driver can’t access tape blocks
+directly, but must wind the tape to the right place. Similarly, a low-level hard disk device driver
+will only write whole numbers of disk sectors at a time, but will be able to access any desired
+disk block directly, because the disk is a random access device.
+To provide a similar interface, device drivers encapsulate all of the hardware-dependent features.
+Idiosyncratic features of the hardware are usually available through the ioctl (for I/O control)
+system call.
+Device files in /dev are used in the same way; they can be opened, read, written, and closed. For
+example, the same open call used to access a regular file is used to access a user terminal, a
+printer, or a tape drive.
+The low-level functions used to access the device drivers, the system calls, include:
+❑ open: Open a file or device
+❑ read: Read from an open file or device
+NAHPI - COME3204
+©2023
+10Working with Files
+Linux System Programming
+❑ write: Write to a file or device
+❑ close: Close the file or device
+❑ ioctl: Pass control information to a device driver
+The ioctl system call is used to provide some necessary hardware-specific control (as opposed to
+regular input and output), so its use varies from device to device. For example, a call to ioctl can
+be used to rewind a tape drive or set the flow control characteristics of a serial port. For this
+reason, ioctl isn’t necessarily portable from machine to machine. In addition, each driver defines
+its own set of ioctl commands.
+These and other system calls are usually documented in section 2 of the manual pages.
+Prototypes providing the parameter lists and function return types for system calls, and
+associated #defines of constants, are provided in include files. The particular ones required for
+each system call will be included with the descriptions of individual calls.
+System calls
+The Linux/Unix-like system provides its service through a set of system calls, which are in effect
+functions within the operating system that may be called by user programs.
+It is sometimes important to employ system calls to achieve maximum efficiency, or to access
+some facilities that are not in library. And parts of standard library can be implemented with
+system calls.
+Device drivers
+The Kernel consists of a number of device drivers, which are a collection of lower- level
+interfaces for controlling system hardware.
+Device driver encapsulate the details of hardware dependent features. For example, a device
+driver for a tape device will give instructions that how to start the tape, wind it forward and
+backward, etc.
+NAHPI - COME3204
+©2023
+11Working with Files
+Linux System Programming
+3.3 Library Functions
+To provide a higher level interface to devices and disk files, Linux provides a number of
+standard libraries, e.g.< stdio.h >, < time.h >, < stdlib.h >, < math.h >, etc.
+Using Library functions, we can avoid the penalty in making system calls. That is Linux
+has to switch from running user code to executing the kernel code and back again, so the system
+calls are more expensive than function calls.
+Figure: Recall on different process state
+One problem with using low-level system calls directly for input and output is that they can be
+very inefficient. Why? Well:
+❑ There’s a performance penalty in making a system call. System calls are therefore expensive
+compared to function calls because Linux has to switch from running your program code to
+executing its own kernel code and back again. It’s a good idea to keep the number of system
+calls used in a program to a minimum and get each call to do as much work as possible, for
+example, by reading and writing large amounts of data rather than a single character at a time.
+❑ The hardware has limitations that can impose restrictions on the size of data blocks that can be
+read or written by the low-level system call at any one time. For example, tape drives often have
+a block size, say 10k, to which they can write. So, if you attempt to write an amount that is not
+an exact multiple of 10k, the drive will still advance the tape to the next 10k block, leaving gaps
+on the tape.
+To provide a higher-level interface to devices and disk files, a Linux distribution (and UNIX)
+provides a number of standard libraries. These are collections of functions that you can include
+in your own programs to handle these problems. A good example is the standard I/O library that
+provides buffered output. You can effectively write data blocks of varying sizes, and the library
+functions arrange for the low-level system calls to be provided with full blocks as the data is
+made available. This dramatically reduces the system call overhead.
+NAHPI - COME3204
+©2023
+12Working with Files
+Linux System Programming
+Library functions are usually documented in the manual pages and often have a standard include
+file associated with them, such as stdio.h for the standard I/O library. Figure below illustrates the
+Linux system, showing where the various file functions exist relative to the user, the device
+drivers, the kernel, and the hardware.
+3.4 Low-Level File Access
+Low level I/O – read and write
+Each running program, called a process, has a number of file descriptors associated with it.
+These are small integers that you can use to access open files or devices. How many of these are
+available will vary depending on how the system has been configured. When a program starts, it
+usually has three of these descriptors already opened. These are:
+❑ 0: Standard input
+❑ 1: Standard output
+❑ 2: Standard error
+Recall from OS course that: A process control block (PCB) contains information about the
+process. Each block of memory contains information about the process state, program counter,
+stack pointer, status of opened files, scheduling algorithms, etc
+NAHPI - COME3204
+©2023
+13Working with Files
+Linux System Programming
+3.4.1 Write System Call
+The write system call arranges for the first nbytes bytes from buffer (memory) to be written to
+the file associated with the file descriptor (fildes). It returns the number of bytes actually written.
+This may be less than nbytes if there has been an error in the file descriptor or if the underlying
+device driver is sensitive to block size. If the function returns 0, it means no data was written; if
+it returns –1, there has been an error in the write call, and the error will be specified in the errno
+global variable.
+Here’s the syntax:
+#include <unistd.h>
+size_t write(int fildes, const void *buf, size_t nbytes);
+With this knowledge, you can write your first program, simple_write.c:
+NAHPI - COME3204
+©2023
+14Working with Files
+Linux System Programming
+3.4.2 Read System Call
+The read system call reads up to nbytes bytes of data from the file associated with the file
+descriptor fildes and places them in the data area buf. It returns the number of data bytes actually
+read, which may be less than the number requested. If a read call returns 0, it had nothing to
+read; it reached the end of the file. Again, an error on the call will cause it to return –1.
+How many numbers of bytes can be read or written in one call? Any number. But the most
+common value is 1, which means one character at a time. We call this pattern as unbuffered.
+And also, the block size, e.g. 1024, 4096 that correspond to a physical block size on a peripheral
+device.
+Of course, reading or writing a large size of chunk of file is more efficient than byte by byte,
+because less system calls. (Do you remember the system call penalty?)
+#include <unistd.h>
+size_t read(int fildes, void *buf, size_t nbytes);
+This program, simple_read.c, copies the first 128 bytes of the standard input to the standard
+output. It copies all of the input if there are fewer than 128 bytes.
+NAHPI - COME3204
+©2023
+15Working with Files
+Linux System Programming
+3.4.3 Open System Call
+To create a new file descriptor, you need to use the open system call. In simple terms, open
+establishes an access path to a file or device. If successful, it returns a file descriptor that can be
+used in read, write, and other system calls. The file descriptor is unique and isn’t shared by any
+other processes that may be running. If two programs have a file open at the same time, they
+maintain distinct file descriptors. If they both write to the file, they will continue to write where
+they left off. Their data isn’t interleaved, but one will overwrite the other. Each keeps its own
+idea of how far into the file (the offset) it has read or written. You can prevent unwanted clashes
+of this sort by using file locking, which you’ll see later on.
+open open is rather like the fopen, except that instead of returning a file pointer, it returns a file
+descriptor, which is just an int.
+NAHPI - COME3204
+©2023
+16Working with Files
+Linux System Programming
+When you open a file, with each file descriptor is associated a marker, which is a numeric index
+that tells where your next read/write is going to take place. By default, when you open a file, the
+marker starts at the first byte. So if your read/write five bytes for example then the marker moves
+five bytes accordingly. Generally if you’re reading and writing to the same file, then is best
+practice to have different file descriptors associated for the different tasks. So, you can use one to
+read and the other to write so they don’t interfere with each other. Equally, you can use the
+system call lseek to move the marker to a desired position.
+NOTE!!! For chmod to work on a file, the process should be running in super user / root
+privilege or must run the privilege of the owner who created that file.
+The name of the file or device to be opened is passed as a parameter, path; the oflags parameter
+is used to specify actions to be taken on opening the file.
+The oflags are specified as a combination of a mandatory file access mode and other optional
+modes. The open call must specify one of the file access modes shown in the following table:
+NAHPI - COME3204
+©2023
+17Working with Files
+Linux System Programming
+open returns the new file descriptor (always a nonnegative integer) if successful, or –1 if it fails,
+at which time open also sets the global variable errno to indicate the reason for the failure. We
+look at errno more closely in a later section. The new file descriptor is always the lowest-
+numbered unused descriptor, a feature that can be quite useful in some circumstances. For
+example, if a program closes its standard output and then calls open again, the file descriptor 1
+will be reused and the standard output will have been effectively redirected to a different file or
+device.
+There is also a creat call standardized by POSIX, but it is not often used. creat doesn’t only
+create the file, as one might expect, but also opens it. It is the equivalent of calling open with
+oflags equal to O_CREAT|O_WRONLY|O_TRUNC.
+The number of files that any one running program may have open at once is limited. The limit,
+usually defined by the constant OPEN_MAX in limits.h, varies from system to system, but
+POSIX requires that it be at least 16. This limit may itself be subject to local system-wide limits
+so that a program may not always be able to open this many files. On Linux, the limit may be
+changed at runtime so OPEN_MAX is not a constant. It typically starts out at 256.
+NAHPI - COME3204
+©2023
+18Working with Files
+Linux System Programming
+Initial Permissions
+When you create a file using the O_CREAT flag with open, you must use the three-parameter
+form. mode, the third parameter, is made from a bitwise OR of the flags defined in the header
+file sys/stat.h. These are:
+❑ S_IRUSR: Read permission, owner
+❑ S_IWUSR: Write permission, owner
+❑ S_IXUSR: Execute permission, owner
+❑ S_IRGRP: Read permission, group
+❑ S_IWGRP: Write permission, group
+❑ S_IXGRP: Execute permission, group
+❑ S_IROTH: Read permission, others
+❑ S_IWOTH: Write permission, others
+❑ S_IXOTH: Execute permission, others
+Random Access -lseek
+Each read, write takes place at a position in the file right after the previous one, which means that
+it access the file sequentially and contiguous. Using lseek, we can get any position in a file
+relative to the original position.
+NAHPI - COME3204
+©2023
+19Working with Files
+Linux System Programming
+long lseek(int fd, long offset, int origin);
+This function means that set current position whose file descriptor is fd to the offset, which is
+taken relative to the location specified by origin.
+Close
+ioctl
+It provides an interface for controlling the behavior of devices and their descriptors and
+configuring underlying services. Terminals, file descriptors, sockets, and even tape drives may
+have ioctl calls defined for them and you need to refer to the specific device’s man page for
+details. POSIX defines only ioctl for streams, which are beyond the scope. Here’s the syntax:
+NAHPI - COME3204
+©2023
+20Working with Files
+NAHPI - COME3204
+Linux System Programming
+©2023
+21Working with Files
+Linux System Programming
+Note that there are a number of other systems calls that operate on these low-level file
+descriptors you may want to consider. Such lseek, fstat, stat and lstat. We might consider them
+later, but our interest for now are the above key system calls.
+NAHPI - COME3204
+©2023
+22Working with Files
+Linux System Programming
+3.5 The Standard I/O Library
+The standard I/O library (stdio) and its header file, stdio.h, provide a versatile interface
+(abstraction) to low-level I/O system calls. The library, now part of ANSI (American National
+Standard Institute) standard C, whereas the system calls you met earlier are not, provides many
+sophisticated functions for formatting output and scanning input. It also takes care of the
+buffering requirements for devices. Carefully note as a system programmer that, ALL
+operating systems that are POSIX compliant will run your programs that make use of the low
+level sys calls without problems since they all offer similar kernel API standardize calls. Also
+note that this library functions intern make use of the same low level sys call but in an optimized
+way as highlighted above in green.
+In many ways, you use this library in the same way that you use low-level file descriptors. You
+need to open a file to establish an access path. This returns a value that is used as a parameter to
+other I/O library functions. The equivalent of the low-level file descriptor is called a stream and
+is implemented as a pointer to a structure, a FILE *.
+Three file streams are automatically opened when a program is started. They are stdin, stdout,
+and stderr. These are declared in stdio.h and represent the standard input, output, and error
+output, respectively, which correspond to the low-level file descriptors 0, 1, and 2.
+In this section, we look at the following functions:
+❑ fopen, fclose
+❑ fread, fwrite
+❑ fflush
+❑ fseek
+❑ fgetc, getc, getchar
+❑ fputc, putc, putchar
+❑ fgets, gets
+❑ printf, fprintf, and sprintf
+❑ scanf, fscanf, and sscanf
+NAHPI - COME3204
+©2023
+23Working with Files
+NAHPI - COME3204
+Linux System Programming
+©2023
+24Working with Files
+NAHPI - COME3204
+Linux System Programming
+©2023
+25Working with Files
+NAHPI - COME3204
+Linux System Programming
+©2023
+26Working with Files
+Linux System Programming
+3.5.1 Formatted Input and Output
+Formatted Output
+There are a number of library functions for producing output in a controlled fashion that you may
+be familiar with if you’ve programmed in C. These functions include printf and friends for
+printing values to a file stream, and scanf and others for reading values from a file stream.
+NAHPI - COME3204
+©2023
+27Working with Files
+NAHPI - COME3204
+Linux System Programming
+©2023
+28Working with Files
+Linux System Programming
+Formatted Input
+NAHPI - COME3204
+©2023
+29Working with Files
+Linux System Programming
+Also note that no context switching is done in this case, be the kernel call is done within the
+same running process context.
+I’ve excluded managing directories for now, but we might consider it
+END
+NAHPI - COME3204
+©2023
+30
+xcfbvZFDXbZDFBDFvzdsfg
+vSDvSDkvSD
+vDFsvSDvSD
+vDFsvSDvSDVf
+SDVDSFVDS
+vSDvSDkvZDSVZDXVVDSDV
+SDVDSFVVZ
+dvZDXV
+dvZDXVzD
+v
