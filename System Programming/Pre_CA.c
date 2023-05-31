@@ -14,12 +14,13 @@ int main() {
     pid_t pid;
     int status;
 
-    signal(SIGUSR1, child_handler); // set up signal handler for child process
 
     pid = fork(); // create child process
 
     if (pid == 0) { // child process
         printf("Child process waiting for signal...\n");
+        signal(SIGUSR1, child_handler); // set up signal handler for child process
+
         while (1) {
             sleep(1); // wait for signal
         }
